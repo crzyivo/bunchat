@@ -1,19 +1,20 @@
 {
-  "name": "@bun-examples/elysia",
-  "version": "1.0.50",
+  "name": "bun-chat",
+  "version": "1.0.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "bun run --watch src/index.tsx"
+    "dev": "bun run --watch src/index.tsx",
+    "debug": "bun --inspect=localhost:6499/debug src/index.tsx",
+    "start": "NODE_ENV=production bun run src/index.tsx",
+    "build": "bun build src/index.tsx --outdir ./dist --target bun --minify"
   },
   "dependencies": {
-    "@elysiajs/html": "^1.0.2",
+    "@elysiajs/html": "^1.4.0",
     "elysia": "latest"
+  },
+  "overrides": {
+    "@kitajs/html": "4.2.1"
   },
   "devDependencies": {
     "bun-types": "latest"
-  },
-  "module": "src/index.js",
-  "bun-create": {
-    "start": "bun run src/index.ts"
   }
 }

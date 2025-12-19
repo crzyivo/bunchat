@@ -78,7 +78,7 @@ export const usersController = new Elysia({ name: 'Users.Controller' })
             )
         }
 
-        cookie.session.set({
+        ensureSessionCookie(cookie).set({
             value: result.sessionId,
             httpOnly: true,
             maxAge: 7 * 24 * 60 * 60,
@@ -88,9 +88,9 @@ export const usersController = new Elysia({ name: 'Users.Controller' })
         return redirect('/')
     })
 
-    .get('/logout', ({ cookie, redirect, sessionId }) => {
+    .get('/logout', async ({ cookie, redirect, sessionId }) => {
         if (sessionId) {
-            AuthService.logout(sessionId)
+            await AuthService.logout(sessionId)
             ensureSessionCookie(cookie).remove()
         }
         return redirect('/login')
@@ -144,7 +144,7 @@ export const usersController = new Elysia({ name: 'Users.Controller' })
         }
 
         const { avatar } = body as { avatar: string }
-        const updatedUser = UserService.updateAvatar(user.id, avatar)
+        const updatedUser = await UserService.updateAvatar(user.id, avatar)
 
         if (!updatedUser) {
             return Response.json({ success: false, error: 'Invalid avatar' }, { status: 400 })
@@ -189,7 +189,7 @@ export const usersController = new Elysia({ name: 'Users.Controller' })
 
         const { avatar } = body as { avatar: string }
         if (avatar) {
-            UserService.updateAvatar(user.id, avatar)
+            await UserService.updateAvatar(user.id, avatar)
         }
 
         return redirect('/profile')

@@ -42,7 +42,7 @@ export const messagesController = new Elysia({ name: 'Messages.Controller' })
 
             console.log('WebSocket opened:', connId)
         },
-        message(ws, message) {
+        async message(ws, message) {
             try {
                 const connId = (ws.data as any).connId as string
                 const data = connectionData.get(connId)
@@ -56,7 +56,7 @@ export const messagesController = new Elysia({ name: 'Messages.Controller' })
 
                 // Handle auth
                 if (message.type === 'auth' && message.sessionId) {
-                    const user = MessageService.getUserFromSession(message.sessionId)
+                    const user = await MessageService.getUserFromSession(message.sessionId)
                     if (user) {
                         data.userId = user.id
                         data.username = user.username
@@ -81,7 +81,8 @@ export const messagesController = new Elysia({ name: 'Messages.Controller' })
                         ? parseInt(message.roomId)
                         : message.roomId
 
-                    if (MessageService.isMember(data.userId, roomId)) {
+                    const isMember = await MessageService.isMember(data.userId, roomId)
+                    if (isMember) {
                         if (data.roomId !== null) {
                             const prevSubs = roomSubscriptions.get(data.roomId)
                             if (prevSubs) {
@@ -108,7 +109,7 @@ export const messagesController = new Elysia({ name: 'Messages.Controller' })
 
                 // Handle message
                 if (message.type === 'message' && data.userId && data.roomId && message.content) {
-                    const msg = MessageService.createMessage(data.roomId, data.userId, message.content)
+                    const msg = await MessageService.createMessage(data.roomId, data.userId, message.content)
                     if (msg) {
                         const broadcast = JSON.stringify({
                             type: 'message',
@@ -129,7 +130,7 @@ export const messagesController = new Elysia({ name: 'Messages.Controller' })
                                     usersInRoom.add(subData.userId)
                                     try {
                                         conn.send(broadcast)
-                                        MessageService.markAsRead(subData.userId, data.roomId, msg.id)
+                                        await MessageService.markAsRead(subData.userId, data.roomId, msg.id)
                                     } catch (e) {
                                         console.error('Failed to send to:', subConnId)
                                     }
@@ -137,7 +138,7 @@ export const messagesController = new Elysia({ name: 'Messages.Controller' })
                             }
                         }
 
-                        const roomMembers = MessageService.getRoomMembers(data.roomId)
+                        const roomMembers = await MessageService.getRoomMembers(data.roomId)
                         const roomUpdate = JSON.stringify({
                             type: 'room_update',
                             roomId: data.roomId,

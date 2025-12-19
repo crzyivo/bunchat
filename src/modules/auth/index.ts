@@ -3,9 +3,9 @@ import { AuthService } from './service'
 import type { User } from '../../db'
 
 export const authPlugin = new Elysia({ name: 'Auth.Plugin' })
-    .derive({ as: 'global' }, ({ cookie }): { user: User | null; sessionId: string } => {
+    .derive({ as: 'global' }, async ({ cookie }): Promise<{ user: User | null; sessionId: string }> => {
         const sessionId = (cookie?.session?.value as string) || ''
-        const user = AuthService.getUserFromSession(sessionId || undefined)
+        const user = await AuthService.getUserFromSession(sessionId || undefined)
         return { user, sessionId }
     })
 

@@ -20,7 +20,7 @@ import ProfilePage from "../views/profile";
 export async function getUserFromCookie(cookie: any): Promise<User | null> {
     const sessionId = cookie?.session?.value;
     if (!sessionId) return null;
-    const session = getSession(sessionId);
+    const session = await getSession(sessionId);
     if (!session) return null;
     return getUserById(session.user_id);
 }
@@ -45,7 +45,7 @@ export const usersController = new Elysia()
 
     .post("/login", async ({ body, cookie, redirect }) => {
         const { username, password } = body as { username: string; password: string };
-        const user = getUserByUsername(username);
+        const user = await getUserByUsername(username);
 
         if (!user) {
             return (
@@ -64,7 +64,7 @@ export const usersController = new Elysia()
             );
         }
 
-        const sessionId = createSession(user.id);
+        const sessionId = await createSession(user.id);
         cookie.session.set({
             value: sessionId,
             httpOnly: true,
@@ -119,7 +119,7 @@ export const usersController = new Elysia()
         const avatarNum = Math.floor(Math.random() * 5) + 1;
         const avatarUrl = `/avatars/default${avatarNum}.svg`;
 
-        const user = createUser(username, passwordHash, avatarUrl);
+        const user = await createUser(username, passwordHash, avatarUrl);
         if (!user) {
             return (
                 <Layout title="Register">
@@ -128,7 +128,7 @@ export const usersController = new Elysia()
             );
         }
 
-        const sessionId = createSession(user.id);
+        const sessionId = await createSession(user.id);
         cookie.session.set({
             value: sessionId,
             httpOnly: true,
@@ -139,10 +139,10 @@ export const usersController = new Elysia()
         return redirect("/");
     })
 
-    .get("/logout", ({ cookie, redirect }) => {
+    .get("/logout", async ({ cookie, redirect }) => {
         const sessionId = cookie?.session?.value;
         if (sessionId) {
-            deleteSession(sessionId);
+            await deleteSession(sessionId);
             cookie.session.remove();
         }
         return redirect("/login");
@@ -196,7 +196,7 @@ export const usersController = new Elysia()
         }
 
         const passwordHash = await Bun.password.hash(newPassword, { algorithm: "argon2id" });
-        updateUserPassword(user.id, passwordHash);
+        await updateUserPassword(user.id, passwordHash);
 
         return (
             <Layout title="Profile">
@@ -217,13 +217,13 @@ export const usersController = new Elysia()
             return Response.json({ success: false, error: "Invalid avatar" }, { status: 400 });
         }
 
-        updateUserAvatar(user.id, avatar);
-        const updatedUser = getUserById(user.id)!;
+        await updateUserAvatar(user.id, avatar);
+        const updatedUser = await getUserById(user.id);
 
         return Response.json({
             success: true,
             message: "Avatar updated successfully",
-            avatar_url: updatedUser.avatar_url,
+            avatar_url: updatedUser?.avatar_url,
         });
     })
 
@@ -272,7 +272,7 @@ export const usersController = new Elysia()
 
             // Update user avatar URL
             const avatarUrl = `/uploads/${filename}`;
-            updateUserAvatar(user.id, avatarUrl);
+            await updateUserAvatar(user.id, avatarUrl);
 
             return Response.json({
                 success: true,
@@ -291,7 +291,7 @@ export const usersController = new Elysia()
 
         const { avatar } = body as { avatar: string };
         if (avatar) {
-            updateUserAvatar(user.id, avatar);
+            await updateUserAvatar(user.id, avatar);
         }
 
         return redirect("/profile");

@@ -23,7 +23,7 @@ import ChatRoomPage from "../views/chatroom";
 async function getUserFromCookie(cookie: any): Promise<User | null> {
     const sessionId = cookie?.session?.value;
     if (!sessionId) return null;
-    const session = getSession(sessionId);
+    const session = await getSession(sessionId);
     if (!session) return null;
     return getUserById(session.user_id);
 }
@@ -37,9 +37,9 @@ export const chatroomsController = new Elysia()
 
     // ============ DASHBOARD (HOME) ============
 
-    .get("/", ({ user, query, redirect, cookie }) => {
+    .get("/", async ({ user, query, redirect, cookie }) => {
         if (!user) return redirect("/login");
-        const rooms = getUserRooms(user.id);
+        const rooms = await getUserRooms(user.id);
         const error = query.error === "invalid_code" ? "Invalid join code" : undefined;
         const sessionId = cookie?.session?.value || "";
         return (
@@ -51,7 +51,7 @@ export const chatroomsController = new Elysia()
 
     // ============ ROOM MANAGEMENT (API - async JSON responses) ============
 
-    .post("/api/rooms/create", ({ user, body }) => {
+    .post("/api/rooms/create", async ({ user, body }) => {
         if (!user) {
             return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
         }
@@ -61,7 +61,7 @@ export const chatroomsController = new Elysia()
             return Response.json({ success: false, error: "Room name is required" }, { status: 400 });
         }
 
-        const room = createChatRoom(name.trim(), user.id);
+        const room = await createChatRoom(name.trim(), user.id);
         if (room) {
             return Response.json({
                 success: true,
@@ -77,7 +77,7 @@ export const chatroomsController = new Elysia()
         }
     })
 
-    .post("/api/rooms/join", ({ user, body }) => {
+    .post("/api/rooms/join", async ({ user, body }) => {
         if (!user) {
             return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
         }
@@ -87,12 +87,12 @@ export const chatroomsController = new Elysia()
             return Response.json({ success: false, error: "Join code is required" }, { status: 400 });
         }
 
-        const room = getChatRoomByCode(code.trim().toLowerCase());
+        const room = await getChatRoomByCode(code.trim().toLowerCase());
         if (!room) {
             return Response.json({ success: false, error: "Invalid join code" }, { status: 404 });
         }
 
-        const joined = joinRoom(user.id, room.id);
+        const joined = await joinRoom(user.id, room.id);
         return Response.json({
             success: true,
             room: {
@@ -105,13 +105,13 @@ export const chatroomsController = new Elysia()
         });
     })
 
-    .post("/api/rooms/:id/leave", ({ user, params }) => {
+    .post("/api/rooms/:id/leave", async ({ user, params }) => {
         if (!user) {
             return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
         }
 
         const roomId = parseInt(params.id);
-        const left = leaveRoom(user.id, roomId);
+        const left = await leaveRoom(user.id, roomId);
 
         return Response.json({
             success: left,
@@ -120,7 +120,7 @@ export const chatroomsController = new Elysia()
     })
 
     // Form-based fallbacks
-    .post("/rooms/create", ({ user, body, redirect }) => {
+    .post("/rooms/create", async ({ user, body, redirect }) => {
         if (!user) return redirect("/login");
 
         const { name } = body as { name: string };
@@ -128,7 +128,7 @@ export const chatroomsController = new Elysia()
             return redirect("/");
         }
 
-        const room = createChatRoom(name.trim(), user.id);
+        const room = await createChatRoom(name.trim(), user.id);
         if (room) {
             return redirect(`/rooms/${room.id}`);
         } else {
@@ -136,44 +136,45 @@ export const chatroomsController = new Elysia()
         }
     })
 
-    .post("/rooms/join", ({ user, body, redirect }) => {
+    .post("/rooms/join", async ({ user, body, redirect }) => {
         if (!user) return redirect("/login");
 
         const { code } = body as { code: string };
-        const room = getChatRoomByCode(code.trim().toLowerCase());
+        const room = await getChatRoomByCode(code.trim().toLowerCase());
 
         if (room) {
-            joinRoom(user.id, room.id);
+            await joinRoom(user.id, room.id);
             return redirect(`/rooms/${room.id}`);
         } else {
             return redirect("/?error=invalid_code");
         }
     })
 
-    .post("/rooms/:id/leave", ({ user, params, redirect }) => {
+    .post("/rooms/:id/leave", async ({ user, params, redirect }) => {
         if (!user) return redirect("/login");
 
         const roomId = parseInt(params.id);
-        leaveRoom(user.id, roomId);
+        await leaveRoom(user.id, roomId);
         return redirect("/");
     })
 
     // ============ CHAT ROOM ============
 
-    .get("/rooms/:id", ({ user, params, redirect, cookie }) => {
+    .get("/rooms/:id", async ({ user, params, redirect, cookie }) => {
         if (!user) return redirect("/login");
 
         const roomId = parseInt(params.id);
-        const room = getChatRoomById(roomId);
+        const room = await getChatRoomById(roomId);
+        const memberCheck = await isMember(user.id, roomId);
 
-        if (!room || !isMember(user.id, roomId)) {
+        if (!room || !memberCheck) {
             return redirect("/");
         }
 
-        const messages = getMessages(roomId, 20);
-        const latestId = getLatestMessageId(roomId);
+        const messages = await getMessages(roomId, 20);
+        const latestId = await getLatestMessageId(roomId);
         if (latestId > 0) {
-            updateLastRead(user.id, roomId, latestId);
+            await updateLastRead(user.id, roomId, latestId);
         }
 
         const sessionId = cookie?.session?.value || "";
@@ -185,16 +186,17 @@ export const chatroomsController = new Elysia()
     })
 
     // API for infinite scroll
-    .get("/api/rooms/:id/history", ({ user, params, query }) => {
+    .get("/api/rooms/:id/history", async ({ user, params, query }) => {
         if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
         const roomId = parseInt(params.id);
-        if (!isMember(user.id, roomId)) {
+        const memberCheck = await isMember(user.id, roomId);
+        if (!memberCheck) {
             return Response.json({ error: "Not a member" }, { status: 403 });
         }
 
         const beforeId = query.before ? parseInt(query.before as string) : undefined;
-        const messages = getMessages(roomId, 20, beforeId);
+        const messages = await getMessages(roomId, 20, beforeId);
 
         return Response.json(messages);
     });

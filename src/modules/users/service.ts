@@ -4,11 +4,11 @@ const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/web
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5MB
 
 export abstract class UserService {
-    static updateAvatar(userId: number, avatarUrl: string): User | null {
+    static async updateAvatar(userId: number, avatarUrl: string): Promise<User | null> {
         if (!avatarUrl.startsWith('/avatars/')) {
             return null
         }
-        updateUserAvatar(userId, avatarUrl)
+        await updateUserAvatar(userId, avatarUrl)
         return getUserById(userId)
     }
 
@@ -37,7 +37,7 @@ export abstract class UserService {
             await Bun.write(filepath, arrayBuffer)
 
             const avatarUrl = `/uploads/${filename}`
-            updateUserAvatar(userId, avatarUrl)
+            await updateUserAvatar(userId, avatarUrl)
 
             return { avatarUrl }
         } catch (error) {

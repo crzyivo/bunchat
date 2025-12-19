@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@elysiajs/html": "^1.4.0",
-    "elysia": "latest"
+    "elysia": "latest",
+    "mysql2": "^3.16.0"
   },
   "overrides": {
     "@kitajs/html": "4.2.1"

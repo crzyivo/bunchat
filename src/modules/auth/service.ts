@@ -12,7 +12,7 @@ import type { LoginBody, RegisterBody, ChangePasswordBody } from './model'
 
 export abstract class AuthService {
     static async login({ username, password }: LoginBody): Promise<{ user: User; sessionId: string } | { error: string }> {
-        const user = getUserByUsername(username)
+        const user = await getUserByUsername(username)
         if (!user) {
             return { error: 'Invalid username or password' }
         }
@@ -22,7 +22,7 @@ export abstract class AuthService {
             return { error: 'Invalid username or password' }
         }
 
-        const sessionId = createSession(user.id)
+        const sessionId = await createSession(user.id)
         return { user, sessionId }
     }
 
@@ -43,12 +43,12 @@ export abstract class AuthService {
         const avatarNum = Math.floor(Math.random() * 5) + 1
         const avatarUrl = `/avatars/default${avatarNum}.svg`
 
-        const user = createUser(username, passwordHash, avatarUrl)
+        const user = await createUser(username, passwordHash, avatarUrl)
         if (!user) {
             return { error: 'Username already taken' }
         }
 
-        const sessionId = createSession(user.id)
+        const sessionId = await createSession(user.id)
         return { user, sessionId }
     }
 
@@ -71,17 +71,17 @@ export abstract class AuthService {
         }
 
         const passwordHash = await Bun.password.hash(newPassword, { algorithm: 'argon2id' })
-        updateUserPassword(userId, passwordHash)
+        await updateUserPassword(userId, passwordHash)
         return { success: true }
     }
 
-    static logout(sessionId: string): void {
-        deleteSession(sessionId)
+    static async logout(sessionId: string): Promise<void> {
+        await deleteSession(sessionId)
     }
 
-    static getUserFromSession(sessionId: string | undefined): User | null {
+    static async getUserFromSession(sessionId: string | undefined): Promise<User | null> {
         if (!sessionId) return null
-        const session = getSession(sessionId)
+        const session = await getSession(sessionId)
         if (!session) return null
         return getUserById(session.user_id)
     }

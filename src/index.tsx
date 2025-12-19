@@ -1,10 +1,10 @@
 import { Elysia } from "elysia";
 import { html } from "@elysiajs/html";
 
-// Controllers
-import { usersController } from "./controllers/users";
-import { chatroomsController } from "./controllers/chatrooms";
-import { messagesController } from "./controllers/messages";
+// Modules
+import { usersController } from "./modules/users";
+import { chatroomsController } from "./modules/chatrooms";
+import { messagesController } from "./modules/messages";
 
 const app = new Elysia()
     .use(html())
@@ -20,11 +20,11 @@ const app = new Elysia()
         return Bun.file(`public/uploads/${params["*"]}`);
     })
 
-    // Mount controllers
+    // Mount modules
     .use(usersController)
     .use(chatroomsController)
     .use(messagesController)
 
-    .listen(3000);
+    .listen(Bun.env.PORT || 3000);
 
 console.log(`Chat server running at http://localhost:${app.server?.port}`);

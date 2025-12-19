@@ -63,7 +63,6 @@ export const chatroomsController = new Elysia()
 
         const room = createChatRoom(name.trim(), user.id);
         if (room) {
-            // Room is auto-joined on creation (createChatRoom handles this)
             return Response.json({
                 success: true,
                 room: {

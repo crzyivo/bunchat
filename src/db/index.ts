@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("chat.db");
+const db = new Database(Bun.env.DATABASE_PATH || "chat.db");
 
 // Initialize database schema
 db.run(`
@@ -136,9 +136,11 @@ export function updateUserAvatar(userId: number, avatarUrl: string): boolean {
 }
 
 // Session functions
+const SESSION_EXPIRY_DAYS = parseInt(Bun.env.SESSION_EXPIRY_DAYS || "7", 10);
+
 export function createSession(userId: number): string {
     const sessionId = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+    const expiresAt = new Date(Date.now() + SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const stmt = db.prepare("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)");
     stmt.run(sessionId, userId, expiresAt);
     return sessionId;

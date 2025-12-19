@@ -2,10 +2,11 @@
   "name": "bun-chat",
   "version": "1.0.0",
   "scripts": {
-    "dev": "bun run --watch src/index.tsx",
-    "debug": "bun --inspect=localhost:6499/debug src/index.tsx",
+    "dev": "NODE_ENV=development bun run --watch src/index.tsx",
+    "debug": "NODE_ENV=development bun --inspect=localhost:6499/debug src/index.tsx",
     "start": "NODE_ENV=production bun run src/index.tsx",
-    "build": "bun build src/index.tsx --outdir ./dist --target bun --minify"
+    "build": "bun build --compile --minify-whitespace --minify-syntax --target bun --outfile bunchat src/index.tsx",
+    "production": "sudo NODE_ENV=production ./bunchat"
   },
   "dependencies": {
     "@elysiajs/html": "^1.4.0",

@@ -8,6 +8,14 @@ import LoginPage from '../../views/login'
 import RegisterPage from '../../views/register'
 import ProfilePage from '../../views/profile'
 
+const ensureSessionCookie = (cookie: Record<string, any>) => {
+    const sessionCookie = cookie?.session
+    if (!sessionCookie) {
+        throw new Error('Session cookie is not configured. Did you enable the session plugin?')
+    }
+    return sessionCookie
+}
+
 export const usersController = new Elysia({ name: 'Users.Controller' })
     .use(authPlugin)
 
@@ -34,7 +42,7 @@ export const usersController = new Elysia({ name: 'Users.Controller' })
             )
         }
 
-        cookie.session.set({
+        ensureSessionCookie(cookie).set({
             value: result.sessionId,
             httpOnly: true,
             maxAge: 7 * 24 * 60 * 60,
@@ -83,7 +91,7 @@ export const usersController = new Elysia({ name: 'Users.Controller' })
     .get('/logout', ({ cookie, redirect, sessionId }) => {
         if (sessionId) {
             AuthService.logout(sessionId)
-            cookie.session.remove()
+            ensureSessionCookie(cookie).remove()
         }
         return redirect('/login')
     })

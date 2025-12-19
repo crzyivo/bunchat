@@ -19,6 +19,9 @@ const app = new Elysia()
     .get("/uploads/*", ({ params }) => {
         return Bun.file(`public/uploads/${params["*"]}`);
     })
+    .get("/buzz.mp3", () => {
+        return Bun.file("public/buzz.mp3");
+    })
 
     // Mount modules
     .use(usersController)

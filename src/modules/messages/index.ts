@@ -15,6 +15,9 @@ const roomSubscriptions = new Map<number, Set<string>>()
 const connectionData = new Map<string, ConnectionData>()
 const userConnections = new Map<number, Set<string>>()
 
+const BUZZ_COOLDOWN_MS = 5000
+const lastBuzzTime = new Map<string, number>()
+
 let connectionCounter = 0
 
 function generateConnectionId(): string {
@@ -184,6 +187,45 @@ export const messagesController = new Elysia({ name: 'Messages.Controller' })
                                     } catch (e) {
                                         // Ignore send errors
                                     }
+                                }
+                            }
+                        }
+                    }
+                    return
+                }
+
+                // Handle buzz
+                if (message.type === 'buzz' && data.userId && data.roomId) {
+                    const buzzKey = `${data.userId}_${data.roomId}`
+                    const now = Date.now()
+                    const lastBuzz = lastBuzzTime.get(buzzKey) || 0
+                    const remaining = BUZZ_COOLDOWN_MS - (now - lastBuzz)
+
+                    if (remaining > 0) {
+                        ws.send(JSON.stringify({
+                            type: 'buzz_cooldown',
+                            remainingMs: remaining,
+                        }))
+                        return
+                    }
+
+                    lastBuzzTime.set(buzzKey, now)
+
+                    const broadcast = JSON.stringify({
+                        type: 'buzz',
+                        username: data.username,
+                        fromUserId: data.userId,
+                    })
+
+                    const subs = roomSubscriptions.get(data.roomId)
+                    if (subs) {
+                        for (const subConnId of subs) {
+                            const conn = connections.get(subConnId)
+                            if (conn) {
+                                try {
+                                    conn.send(broadcast)
+                                } catch (e) {
+                                    // Ignore send errors
                                 }
                             }
                         }

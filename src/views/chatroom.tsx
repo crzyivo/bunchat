@@ -148,6 +148,9 @@ export default function ChatRoomPage({ user, room, messages, sessionId }: ChatRo
                         <button type="button" class="emoji-toggle" id="emoji-toggle" title="Emojis">
                             :)
                         </button>
+                        <button type="button" class="buzz-btn" id="buzz-btn" title="Send a buzz!">
+                            📳
+                        </button>
                     </div>
                     <button type="submit" class="btn btn-primary">Send</button>
                 </form>
@@ -181,6 +184,10 @@ export default function ChatRoomPage({ user, room, messages, sessionId }: ChatRo
                     let typingTimeout;
                     let isLoadingHistory = false;
                     let oldestMessageId = ${messages.length > 0 ? messages[0].id : 0};
+                    let buzzCooldown = false;
+                    const buzzBtn = document.getElementById('buzz-btn');
+                    
+                    const buzzAudio = new Audio('/buzz.mp3');
                     
                     function connect() {
                         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -203,6 +210,14 @@ export default function ChatRoomPage({ user, room, messages, sessionId }: ChatRo
                             
                             if (data.type === 'typing') {
                                 showTyping(data.username);
+                            }
+                            
+                            if (data.type === 'buzz') {
+                                triggerBuzz(data.username);
+                            }
+                            
+                            if (data.type === 'buzz_cooldown') {
+                                showBuzzCooldown(data.remainingMs);
                             }
                         };
                         
@@ -284,6 +299,67 @@ export default function ChatRoomPage({ user, room, messages, sessionId }: ChatRo
                             typingIndicator.style.display = 'none';
                         }, 2000);
                     }
+                    
+                    function triggerBuzz(username) {
+                        document.body.classList.add('buzz-shake');
+                        buzzAudio.currentTime = 0;
+                        buzzAudio.play().catch(function() {});
+                        
+                        const notification = document.createElement('div');
+                        notification.className = 'buzz-notification';
+                        notification.textContent = username + ' sent a buzz!';
+                        document.body.appendChild(notification);
+                        
+                        setTimeout(function() {
+                            document.body.classList.remove('buzz-shake');
+                            notification.remove();
+                        }, 3000);
+                    }
+                    
+                    function showBuzzCooldown(remainingMs) {
+                        const seconds = Math.ceil(remainingMs / 1000);
+                        buzzBtn.textContent = seconds + 's';
+                        buzzBtn.disabled = true;
+                        buzzBtn.classList.add('cooldown');
+                        
+                        const interval = setInterval(function() {
+                            const remaining = parseInt(buzzBtn.textContent) - 1;
+                            if (remaining <= 0) {
+                                clearInterval(interval);
+                                buzzBtn.textContent = '📳';
+                                buzzBtn.disabled = false;
+                                buzzBtn.classList.remove('cooldown');
+                            } else {
+                                buzzBtn.textContent = remaining + 's';
+                            }
+                        }, 1000);
+                    }
+                    
+                    function sendBuzz() {
+                        if (buzzCooldown || !ws || ws.readyState !== WebSocket.OPEN) return;
+                        ws.send(JSON.stringify({ type: 'buzz' }));
+                        
+                        buzzCooldown = true;
+                        buzzBtn.textContent = '5s';
+                        buzzBtn.disabled = true;
+                        buzzBtn.classList.add('cooldown');
+                        
+                        let countdown = 5;
+                        const interval = setInterval(function() {
+                            countdown--;
+                            if (countdown <= 0) {
+                                clearInterval(interval);
+                                buzzBtn.textContent = '📳';
+                                buzzBtn.disabled = false;
+                                buzzBtn.classList.remove('cooldown');
+                                buzzCooldown = false;
+                            } else {
+                                buzzBtn.textContent = countdown + 's';
+                            }
+                        }, 1000);
+                    }
+                    
+                    buzzBtn.addEventListener('click', sendBuzz);
                     
                     function sendMessage() {
                         const content = messageInput.value.trim();
@@ -414,6 +490,22 @@ export default function ChatRoomPage({ user, room, messages, sessionId }: ChatRo
                             isLoadingHistory = false;
                         }
                     });
+                    
+                    // Copy room code on click
+                    const roomCodeDisplay = document.getElementById('room-code-display');
+                    if (roomCodeDisplay) {
+                        roomCodeDisplay.addEventListener('click', function() {
+                            const code = this.dataset.code;
+                            if (code) {
+                                navigator.clipboard.writeText(code).then(function() {
+                                    roomCodeDisplay.textContent = 'Copied!';
+                                    setTimeout(function() {
+                                        roomCodeDisplay.textContent = 'Code: ' + code;
+                                    }, 1500);
+                                });
+                            }
+                        });
+                    }
                     
                     // Scroll to bottom on load
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
